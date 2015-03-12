@@ -506,6 +506,12 @@ int IRrecv::decode(decode_results *results) {
   if (decodeWhynter(results)) {
     return DECODED;
   }
+#ifdef DEBUG
+  Serial.println("Attempting SHARP decode");
+#endif 
+  if (decodeSHARP(results)) {
+    return DECODED;
+  }
   // decodeHash returns a hash on any input.
   // Thus, it needs to be last in the list.
   // If you add any decodes, add them before this.
@@ -1114,6 +1120,40 @@ long IRrecv::decodeSAMSUNG(decode_results *results) {
   results->bits = SAMSUNG_BITS;
   results->value = data;
   results->decode_type = SAMSUNG;
+  return DECODED;
+}
+
+long IRrecv::decodeSHARP(decode_results *results) {
+  long data = 0;
+  int offset = 1;//Skip first space
+  if (irparams.rawlen < 2 * SHARP_BITS+1) {
+    return ERR;
+  }
+  for (int i = 0; i < SHARP_BITS; i++) {
+    if (!MATCH_MARK(results->rawbuf[offset], SHARP_BIT_MARK)) {
+      return ERR;
+    }
+    offset++;
+    if (MATCH_SPACE(results->rawbuf[offset], SHARP_ONE_SPACE)) {
+      data |= (1<<i);
+    } 
+    else if (MATCH_SPACE(results->rawbuf[offset], SHARP_ZERO_SPACE)) {
+      //data <<= 1;
+    } 
+    else {
+      return ERR;
+    }
+    offset++;
+  }
+  //Message ends with a MARK
+  if (!MATCH_MARK(results->rawbuf[offset], SHARP_BIT_MARK)) {
+    return ERR;
+  }
+
+  // Success
+  results->bits = SHARP_BITS;
+  results->value = data;
+  results->decode_type = SHARP;
   return DECODED;
 }
 
